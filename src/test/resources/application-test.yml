@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:carddisputes;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    locations: classpath:db/h2-migration,classpath:db/demo
+    placeholders:
+      auth0-issuer: https://issuer.example.test/
+      auth0-demo-subject: auth0|shannon-test
+      auth0-second-demo-subject: auth0|alex-test
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://issuer.example.test/
+          audiences: https://card-dispute-api.example.test/

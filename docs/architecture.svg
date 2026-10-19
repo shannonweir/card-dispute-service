@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="420" viewBox="0 0 1240 420" role="img" aria-labelledby="title desc">
+<title id="title">Card dispute service architecture</title>
+<desc id="desc">The Angular portal signs in with Auth0 and calls REST controllers. The API verifies tokens using public signing keys. Services access PostgreSQL through JPA repositories.</desc>
+<rect width="1240" height="420" rx="18" fill="#f8fafc"/>
+<rect x="166" y="46" width="220" height="96" rx="12" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+<text x="276.0" y="81.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#0f172a">Auth0</text>
+<text x="276.0" y="111.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="400" fill="#475569">Online sign-in</text>
+<rect x="36" y="222" width="188" height="108" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="130.0" y="263.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#0f172a">Angular portal</text>
+<text x="130.0" y="293.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="400" fill="#475569">Customer interface</text>
+<rect x="278" y="222" width="188" height="108" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="372.0" y="263.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#0f172a">Spring Boot API</text>
+<text x="372.0" y="293.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="400" fill="#475569">Security + controllers</text>
+<rect x="520" y="222" width="188" height="108" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="614.0" y="263.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#0f172a">Services</text>
+<text x="614.0" y="293.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="400" fill="#475569">Ownership · disputes</text>
+<rect x="762" y="222" width="188" height="108" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="856.0" y="263.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#0f172a">Repositories</text>
+<text x="856.0" y="293.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="400" fill="#475569">Spring Data JPA</text>
+<rect x="1004" y="222" width="200" height="108" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="1104.0" y="263.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#0f172a">PostgreSQL</text>
+<text x="1104.0" y="293.0" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="400" fill="#475569">Transactions · cases</text>
+<polyline points="224,276 278,276" fill="none" stroke="#64748b" stroke-width="2"/>
+<polygon points="278,276 269.0,271.0 269.0,281.0" fill="#64748b"/>
+<polyline points="466,276 520,276" fill="none" stroke="#64748b" stroke-width="2"/>
+<polygon points="520,276 511.0,271.0 511.0,281.0" fill="#64748b"/>
+<polyline points="708,276 762,276" fill="none" stroke="#64748b" stroke-width="2"/>
+<polygon points="762,276 753.0,271.0 753.0,281.0" fill="#64748b"/>
+<polyline points="950,276 1004,276" fill="none" stroke="#64748b" stroke-width="2"/>
+<polygon points="1004,276 995.0,271.0 995.0,281.0" fill="#64748b"/>
+<polyline points="130,222 130,94 166,94" fill="none" stroke="#64748b" stroke-width="2"/>
+<polygon points="166,94 157.0,89.0 157.0,99.0" fill="#64748b"/>
+<text x="87" y="162" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="400" fill="#334155">Login</text>
+<polyline points="276,142 276,178 372,178 372,222" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="6 6"/>
+<polygon points="372,222 377.0,213.0 367.0,213.0" fill="#64748b"/>
+<text x="497" y="178" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="400" fill="#334155">Public signing keys</text>
+<text x="620" y="379" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="400" fill="#475569">Contract first  ·  Customer-scoped access  ·  Atomic dispute creation</text>
+</svg>

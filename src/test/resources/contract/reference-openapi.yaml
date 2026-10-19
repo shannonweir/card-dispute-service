@@ -1,0 +1,403 @@
+openapi: 3.0.3
+info:
+  title: Card Dispute Portal API
+  version: 1.0.0
+  description: |
+    Customer-facing API for viewing mock card transactions, submitting disputes,
+    and tracking dispute progress. Transactions may be seeded/mock data; disputes
+    and timeline events should be persisted. All customer-scoped endpoints enforce
+    ownership based on the authenticated identity, never a supplied customer ID.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+security:
+  - bearerAuth: []
+tags:
+  - name: Transactions
+  - name: Disputes
+  - name: Documents
+paths:
+  /api/v1/transactions:
+    get:
+      tags: [Transactions]
+      summary: Search the authenticated customer's card transactions
+      operationId: listTransactions
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - name: from
+          in: query
+          description: Start date (inclusive)
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: End date (inclusive)
+          schema: { type: string, format: date }
+        - name: search
+          in: query
+          description: Merchant or transaction reference
+          schema: { type: string, maxLength: 120 }
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/TransactionType' }
+      responses:
+        '200':
+          description: Paginated transactions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransactionPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/transactions/{transactionId}:
+    get:
+      tags: [Transactions]
+      summary: Get a transaction and its dispute eligibility
+      operationId: getTransaction
+      parameters:
+        - { $ref: '#/components/parameters/TransactionId' }
+      responses:
+        '200':
+          description: Transaction details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/disputes/reasons:
+    get:
+      tags: [Disputes]
+      summary: List allowed dispute reasons
+      operationId: listDisputeReasons
+      responses:
+        '200':
+          description: Dispute reasons
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DisputeReasonOption' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/disputes/summary:
+    get:
+      tags: [Disputes]
+      summary: Get dashboard counts
+      operationId: getDisputeSummary
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisputeSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/disputes:
+    get:
+      tags: [Disputes]
+      summary: List disputes belonging to the authenticated customer
+      operationId: listDisputes
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/DisputeStatus' }
+      responses:
+        '200':
+          description: Paginated disputes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisputePage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Disputes]
+      summary: Submit a dispute against an eligible transaction
+      description: The service verifies transaction ownership, eligibility, and duplicate-dispute rules. Persist the dispute and initial timeline event atomically. Use Idempotency-Key to safely retry submissions.
+      operationId: createDispute
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Unique key per logical submission, to prevent duplicate disputes on retry
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDispute' }
+      responses:
+        '201':
+          description: Dispute created
+          headers:
+            Location:
+              description: URL of created dispute
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispute' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /api/v1/disputes/{disputeId}:
+    get:
+      tags: [Disputes]
+      summary: Get dispute details
+      operationId: getDispute
+      parameters:
+        - { $ref: '#/components/parameters/DisputeId' }
+      responses:
+        '200':
+          description: Dispute details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispute' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/disputes/{disputeId}/timeline:
+    get:
+      tags: [Disputes]
+      summary: Get chronological dispute history
+      description: Events are factual, immutable audit history; the UI may display upcoming stages separately without representing them as completed events.
+      operationId: getDisputeTimeline
+      parameters:
+        - { $ref: '#/components/parameters/DisputeId' }
+      responses:
+        '200':
+          description: Timeline events, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TimelineEvent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/disputes/{disputeId}/documents:
+    get:
+      tags: [Documents]
+      summary: List supporting document metadata
+      operationId: listDisputeDocuments
+      parameters:
+        - { $ref: '#/components/parameters/DisputeId' }
+      responses:
+        '200':
+          description: Documents for this dispute
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DisputeDocument' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Documents]
+      summary: Upload supporting evidence
+      description: Enforce ownership, MIME validation, 5 MB maximum file size, safe storage, and malware scanning before making uploaded content available.
+      operationId: uploadDisputeDocument
+      parameters:
+        - { $ref: '#/components/parameters/DisputeId' }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF, PNG, or JPEG; maximum 5 MB
+      responses:
+        '201':
+          description: Document received for processing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisputeDocument' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: Auth0 OAuth 2.0 access token issued for this API audience
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    TransactionId:
+      name: transactionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DisputeId:
+      name: disputeId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    TransactionType:
+      type: string
+      enum: [GROCERIES, TRANSPORT, ENTERTAINMENT, FUEL, SHOPPING, DINING, TRAVEL, OTHER]
+    TransactionStatus:
+      type: string
+      enum: [PENDING, POSTED, REVERSED]
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount: { type: number, multipleOf: 0.01, example: 450.00 }
+        currency: { type: string, pattern: '^[A-Z]{3}$', example: ZAR }
+    Transaction:
+      type: object
+      required: [id, reference, merchant, amount, occurredAt, type, status, disputeEligible]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string, example: ZA9876543210 }
+        merchant: { type: string, example: Checkers Somerset West }
+        merchantLocation: { type: string, example: Somerset West, WC }
+        amount: { $ref: '#/components/schemas/Money' }
+        occurredAt: { type: string, format: date-time, example: '2026-08-27T19:14:00+02:00' }
+        type: { $ref: '#/components/schemas/TransactionType' }
+        status: { $ref: '#/components/schemas/TransactionStatus' }
+        cardLastFour: { type: string, pattern: '^\d{4}$', example: '1234' }
+        disputeEligible: { type: boolean, example: true }
+        disputeIneligibilityReason: { type: string, nullable: true }
+        disputeId: { type: string, format: uuid, nullable: true, description: Existing dispute ID, if any }
+    DisputeReason:
+      type: string
+      enum: [UNAUTHORISED, DUPLICATE_CHARGE, INCORRECT_AMOUNT, GOODS_NOT_RECEIVED, REFUND_NOT_RECEIVED, OTHER]
+    DisputeReasonOption:
+      type: object
+      required: [code, label]
+      properties:
+        code: { $ref: '#/components/schemas/DisputeReason' }
+        label: { type: string, example: Unauthorised transaction }
+    DisputeStatus:
+      type: string
+      enum: [SUBMITTED, UNDER_REVIEW, INFORMATION_REQUESTED, INVESTIGATING, RESOLVED, REJECTED, CLOSED]
+    CreateDispute:
+      type: object
+      required: [transactionId, reason, details]
+      properties:
+        transactionId: { type: string, format: uuid }
+        reason: { $ref: '#/components/schemas/DisputeReason' }
+        details: { type: string, minLength: 10, maxLength: 2000, example: I do not recognise this purchase. }
+    Dispute:
+      type: object
+      required: [id, reference, transactionId, reason, details, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string, example: DSP-2026-000123 }
+        transactionId: { type: string, format: uuid }
+        reason: { $ref: '#/components/schemas/DisputeReason' }
+        details: { type: string }
+        status: { $ref: '#/components/schemas/DisputeStatus' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+        resolutionNote: { type: string, nullable: true }
+    TimelineEvent:
+      type: object
+      required: [id, status, title, description, occurredAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/DisputeStatus' }
+        title: { type: string, example: Under review }
+        description: { type: string, example: Our team is reviewing your dispute. }
+        occurredAt: { type: string, format: date-time, example: '2026-08-28T09:12:00+02:00' }
+        actionRequired: { type: boolean, default: false }
+    DisputeDocument:
+      type: object
+      required: [id, fileName, contentType, sizeBytes, uploadedAt, scanStatus]
+      properties:
+        id: { type: string, format: uuid }
+        fileName: { type: string, example: receipt.pdf }
+        contentType: { type: string, example: application/pdf }
+        sizeBytes: { type: integer, format: int64, example: 215000 }
+        uploadedAt: { type: string, format: date-time }
+        scanStatus: { type: string, enum: [PENDING, CLEAN, REJECTED] }
+    DisputeSummary:
+      type: object
+      required: [totalTransactions, disputesSubmitted, inProgress, resolved]
+      properties:
+        totalTransactions: { type: integer, example: 124 }
+        disputesSubmitted: { type: integer, example: 5 }
+        inProgress: { type: integer, example: 3 }
+        resolved: { type: integer, example: 2 }
+    TransactionPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Transaction' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    DisputePage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Dispute' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    ApiError:
+      type: object
+      required: [status, code, message, timestamp]
+      properties:
+        status: { type: integer, example: 400 }
+        code: { type: string, example: VALIDATION_ERROR }
+        message: { type: string, example: Invalid request }
+        timestamp: { type: string, format: date-time }
+        traceId: { type: string, description: Correlation identifier for support }
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: Resource not found or not accessible to this customer
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Conflict:
+      description: Duplicate dispute or idempotency conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    UnprocessableEntity:
+      description: Transaction is not eligible for a dispute
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    PayloadTooLarge:
+      description: File exceeds upload size limit
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    UnsupportedMediaType:
+      description: Unsupported file format
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }

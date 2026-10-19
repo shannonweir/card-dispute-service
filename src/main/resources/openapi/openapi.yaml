@@ -1,0 +1,1052 @@
+# Canonical API contract, bootstrapped from the existing Java implementation.
+openapi: 3.0.1
+info:
+  title: Card Dispute Portal API
+  description: Secure customer transaction and dispute management API. Transactions
+    and disputes are scoped to the authenticated customer.
+  contact:
+    name: Card Dispute Platform Team
+  license:
+    name: Internal use
+  version: 3.0.0
+servers:
+- url: /
+  description: Current environment
+paths:
+  /api/v1/customer:
+    get:
+      tags: [Customer]
+      operationId: getCurrentCustomer
+      description: Returns the customer identified by the validated login, including their accounts. Customer identity is never selected by the caller.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The logged-in customer and their accounts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerProfile'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Login is not linked to a customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/disputes:
+    get:
+      tags:
+      - Dispute
+      operationId: getDisputes
+      parameters:
+      - name: accountId
+        in: query
+        required: false
+        description: Restrict results to one of the logged-in customer's accounts; omit for all their accounts. An inaccessible account returns 404.
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+          default: 20
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/DisputeStatus'
+      responses:
+        '404':
+          description: Account was not found or is not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '400':
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisputePage'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+    post:
+      tags:
+      - Dispute
+      description: An Idempotency-Key can be retried with the same payload; changed
+        payloads return 409. Only owned, posted transactions without a non-closed dispute
+        are eligible. A new dispute is allowed only after all previous disputes are CLOSED.
+        Retrying a previous Idempotency-Key still returns its original dispute, even if CLOSED.
+      operationId: createDispute
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          maxLength: 128
+          minLength: 8
+          type: string
+          pattern: '[\s\S]*\S[\s\S]*'
+        x-field-extra-annotation: '@jakarta.validation.constraints.NotBlank'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDispute'
+        required: true
+      responses:
+        '201':
+          description: Dispute created
+          headers:
+            Location:
+              description: URL of the created dispute
+              style: simple
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+        '400':
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Resource not found or not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Duplicate dispute or idempotency conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Transaction is not eligible for a dispute
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+  /api/v1/disputes/{disputeId}/documents:
+    get:
+      tags:
+      - Documents
+      operationId: getDisputeDocuments
+      parameters:
+      - name: disputeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Resource not found or not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisputeDocument'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+    post:
+      tags:
+      - Documents
+      description: PDF, PNG or JPEG up to 5 MB. Checks ownership, file size, file signature and declared MIME type. Malware scanning is outside this assessment scope. This API exposes upload metadata only; no file download is provided.
+      operationId: uploadDisputeDocument
+      parameters:
+      - name: disputeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+              - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '400':
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Resource not found or not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: File exceeds 5 MB
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '415':
+          description: Unsupported file format
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisputeDocument'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+  /api/v1/transactions:
+    get:
+      tags:
+      - Transaction
+      operationId: getTransactions
+      parameters:
+      - name: accountId
+        in: query
+        required: false
+        description: Restrict results to one of the logged-in customer's accounts; omit for all their accounts. An inaccessible account returns 404.
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+          default: 20
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: search
+        in: query
+        required: false
+        schema:
+          maxLength: 120
+          minLength: 0
+          type: string
+      - name: type
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/TransactionType'
+      responses:
+        '404':
+          description: Account was not found or is not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '400':
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+  /api/v1/transactions/{transactionId}:
+    get:
+      tags:
+      - Transaction
+      operationId: getTransactionById
+      parameters:
+      - name: transactionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Resource not found or not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+  /api/v1/disputes/{disputeId}:
+    get:
+      tags:
+      - Dispute
+      operationId: getDisputeById
+      parameters:
+      - name: disputeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Resource not found or not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+  /api/v1/disputes/{disputeId}/timeline:
+    get:
+      tags:
+      - Dispute
+      operationId: getDisputeTimeline
+      parameters:
+      - name: disputeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Resource not found or not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimelineEvent'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+  /api/v1/disputes/summary:
+    get:
+      tags:
+      - Dispute
+      operationId: getDisputeSummary
+      parameters:
+      - name: accountId
+        in: query
+        required: false
+        description: Restrict results to one of the logged-in customer's accounts; omit for all their accounts. An inaccessible account returns 404.
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '404':
+          description: Account was not found or is not owned by this customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisputeSummary'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+  /api/v1/disputes/reasons:
+    get:
+      tags:
+      - Dispute
+      operationId: getDisputeReasons
+      responses:
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Authentication required or token invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Access to this resource is forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisputeReasonOption'
+        '500':
+          description: Unexpected server failure; use errorId when contacting support
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - bearerAuth: [
+          ]
+components:
+  schemas:
+    CustomerType:
+      type: string
+      enum: [INDIVIDUAL, BUSINESS]
+    CustomerProfile:
+      type: object
+      required: [id, displayName, type, accounts]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        type:
+          $ref: '#/components/schemas/CustomerType'
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountSummary'
+    AccountType:
+      type: string
+      enum: [CURRENT, CREDIT_CARD, SAVINGS]
+    AccountSummary:
+      type: object
+      required: [id, displayName, type, maskedNumber, currency]
+      properties:
+        type:
+          $ref: '#/components/schemas/AccountType'
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        maskedNumber:
+          type: string
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+
+    CreateDispute:
+      required:
+      - details
+      - reason
+      - transactionId
+      type: object
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+        reason:
+          $ref: '#/components/schemas/DisputeReason'
+        details:
+          maxLength: 2000
+          minLength: 10
+          type: string
+          pattern: '[\s\S]*\S[\s\S]*'
+          x-field-extra-annotation: '@jakarta.validation.constraints.NotBlank'
+    Problem:
+      description: RFC 9457 Problem Details. The code extension is a stable application error code; errorId is a support reference for unexpected server failures.
+      type: object
+      required: [type, title, status, detail, instance, code]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: about:blank
+        title:
+          type: string
+          example: Conflict
+        status:
+          type: integer
+          format: int32
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+          example: A dispute already exists for this transaction
+        instance:
+          type: string
+          format: uri-reference
+          example: /api/v1/disputes
+        code:
+          type: string
+          example: CONFLICT
+        errorId:
+          type: string
+          format: uuid
+      additionalProperties: true
+    Dispute:
+      required:
+      - accountId
+      - customerId
+      - createdAt
+      - details
+      - id
+      - reason
+      - reference
+      - status
+      - transactionId
+      - updatedAt
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+        transactionId:
+          type: string
+          format: uuid
+        reason:
+          $ref: '#/components/schemas/DisputeReason'
+        details:
+          type: string
+        status:
+          $ref: '#/components/schemas/DisputeStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        resolutionNote:
+          type: string
+          nullable: true
+    DisputeDocument:
+      required:
+      - contentType
+      - fileName
+      - id
+      - sizeBytes
+      - uploadedAt
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+          format: date-time
+    Money:
+      required:
+      - amount
+      - currency
+      type: object
+      properties:
+        amount:
+          multipleOf: 0.01
+          type: number
+        currency:
+          pattern: ^[A-Z]{3}$
+          type: string
+    Transaction:
+      required:
+      - accountId
+      - customerId
+      - amount
+      - disputeEligible
+      - id
+      - merchant
+      - occurredAt
+      - reference
+      - status
+      - type
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+        merchant:
+          type: string
+        merchantLocation:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Money'
+        occurredAt:
+          type: string
+          format: date-time
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        status:
+          $ref: '#/components/schemas/TransactionStatus'
+        cardLastFour:
+          pattern: ^[0-9]{4}$
+          type: string
+        disputeEligible:
+          description: True for owned posted transactions with no non-closed dispute.
+          type: boolean
+        disputeIneligibilityReason:
+          type: string
+          nullable: true
+        disputeId:
+          description: Non-closed dispute ID, or null when no non-closed dispute exists. Closed cases remain available in the dispute list.
+          type: string
+          format: uuid
+          nullable: true
+    TransactionPage:
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    DisputePage:
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dispute'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    TimelineEvent:
+      required:
+      - description
+      - id
+      - occurredAt
+      - status
+      - title
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/DisputeStatus'
+        title:
+          type: string
+        description:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        actionRequired:
+          type: boolean
+    DisputeSummary:
+      required:
+      - disputesSubmitted
+      - inProgress
+      - resolved
+      - rejected
+      - totalTransactions
+      type: object
+      properties:
+        totalTransactions:
+          type: integer
+          format: int64
+        disputesSubmitted:
+          type: integer
+          format: int64
+        inProgress:
+          type: integer
+          format: int64
+        resolved:
+          description: Cases with status RESOLVED or CLOSED. Rejected cases are counted separately.
+          type: integer
+          format: int64
+        rejected:
+          description: Cases with status REJECTED.
+          type: integer
+          format: int64
+    DisputeReasonOption:
+      required:
+      - code
+      - label
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/DisputeReason'
+        label:
+          type: string
+    TransactionStatus:
+      type: string
+      enum:
+      - PENDING
+      - POSTED
+      - REVERSED
+    DisputeReason:
+      type: string
+      enum:
+      - UNAUTHORISED
+      - DUPLICATE_CHARGE
+      - INCORRECT_AMOUNT
+      - GOODS_NOT_RECEIVED
+      - REFUND_NOT_RECEIVED
+      - OTHER
+    DisputeStatus:
+      type: string
+      enum:
+      - SUBMITTED
+      - UNDER_REVIEW
+      - INFORMATION_REQUESTED
+      - INVESTIGATING
+      - RESOLVED
+      - REJECTED
+      - CLOSED
+    TransactionType:
+      type: string
+      enum:
+      - GROCERIES
+      - TRANSPORT
+      - ENTERTAINMENT
+      - FUEL
+      - SHOPPING
+      - DINING
+      - TRAVEL
+      - OTHER
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: Auth0 OAuth 2.0 access token issued for this API audience
+      scheme: bearer
+      bearerFormat: JWT
