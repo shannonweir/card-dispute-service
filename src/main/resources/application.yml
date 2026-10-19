@@ -1,10 +1,12 @@
 spring:
+  config:
+    import: "optional:file:.env[.properties]"
   application:
     name: card-dispute-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/card_disputes
-    username: "card_disputes"
-    password: "postgres"
+    url: "${DB_URL:jdbc:postgresql://localhost:5432/${DB_NAME}}"
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     open-in-view: false
@@ -19,8 +21,9 @@ spring:
     locations: classpath:db/migration,classpath:db/demo
     placeholders:
       auth0-issuer: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}
-      auth0-demo-subject: "auth0|6acc0b351f3fb75f306214bb"
-      auth0-second-demo-subject: "auth0|6acc0d0b3eaa494f24fbd942"
+      # Used only by Flyway to initialize demo identity mappings, not to authenticate requests.
+      auth0-demo-subject: ${AUTH0_DEMO_SUBJECT}
+      auth0-second-demo-subject: ${AUTH0_SECOND_DEMO_SUBJECT}
   servlet:
     multipart:
       max-file-size: 5MB
@@ -31,9 +34,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: "https://dev-1fnyw5sg2ehum1ph.us.auth0.com/"
+          issuer-uri: ${AUTH0_ISSUER_URI}
           audiences:
-            - "https://api.carddisputeportal.local"
+            - ${AUTH0_AUDIENCE}
           jws-algorithms: RS256
 
 server:
@@ -43,7 +46,7 @@ server:
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:${CORS_ALLOWED_ORIGIN:http://localhost:4200}}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
 logging:
   level:

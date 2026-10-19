@@ -24,10 +24,12 @@ Internet is required for downloads and Auth0 login. Ports: **8080** backend · *
 From the backend repository:
 
 ```bash
+# First checkout only: copy and adjust your local settings
+cp .env.example .env
 docker compose up --build -d
 ```
 
-Builds, tests and starts the backend + PostgreSQL with seeded assessment data. No manual database setup or `.env` file.
+Builds, tests and starts the backend + PostgreSQL with seeded assessment data. No manual database setup. The local `.env` is ignored by Git; `.env.example` contains runnable assessment defaults.
 
 [Swagger UI](http://localhost:8080/swagger-ui.html) · [OpenAPI](http://localhost:8080/openapi.yaml) · [Health](http://localhost:8080/actuator/health)
 
@@ -101,7 +103,7 @@ For frontend development instead: `npm ci`, then `npm start`. Test with `npm tes
 <details>
 <summary>☕ Run from an IDE or Maven</summary>
 
-Stop the backend container first if it occupies port 8080:
+Copy `.env.example` to `.env` once. Spring imports this file from the repository working directory for Maven/IDE runs. Stop the backend container first if it occupies port 8080:
 
 ```bash
 docker compose stop card-dispute-service
@@ -109,7 +111,7 @@ docker compose up -d database
 mvn spring-boot:run
 ```
 
-Or run `CardDisputePortalServiceApplication` in your IDE. Use **Java 25**, with **no active profile**.
+Or run `CardDisputePortalServiceApplication` in your IDE. Use **Java 25**, **no active profile**, and the repository root as the working directory.
 
 </details>
 
@@ -131,9 +133,13 @@ These tests insert data. Use a separate database, not the application database.
 <details>
 <summary>⚙️ Configuration and contract changes</summary>
 
-Settings: [application.yml](src/main/resources/application.yml) · [Test overrides](src/test/resources/application-test.yml). Compose overrides the database hostname.
+Deployment settings live in `.env`: database credentials/name, Auth0 issuer/audience, demo seed subjects and CORS origins. Start from [.env.example](.env.example). Keep entries as unquoted `KEY=value` so both Compose and Spring's local properties import can read them. The file is excluded from Git and the image build.
 
-For another Auth0 tenant, update issuer/audience, subject mappings and frontend settings; allow the frontend's callback/logout URLs and web origins in Auth0.
+[application.yml](src/main/resources/application.yml) keeps Spring settings and references these values; [test overrides](src/test/resources/application-test.yml) remain isolated. Compose passes the variables into containers and sets the database hostname to `database`. Changing `.env` values takes effect when Compose recreates the affected containers. PostgreSQL credentials are initialized with its data volume; editing `.env` does not change an existing database user's password.
+
+For another Auth0 tenant, update the `.env` issuer/audience and demo subject mappings plus frontend settings; allow the frontend's callback/logout URLs and web origins in Auth0.
+
+`AUTH0_DEMO_SUBJECT` and `AUTH0_SECOND_DEMO_SUBJECT` are used only by Flyway to initialize demo identity-to-customer mappings. Authentication validates JWTs; account access uses the persisted database mappings. The variables are not checked per request or used as a runtime user allowlist. In production, trusted customer onboarding would provision those mappings.
 
 Change the OpenAPI contract first, then run `mvn generate-sources`. From the frontend checkout, run `npm run generate:api`. Generated Java code stays under `target/`.
 

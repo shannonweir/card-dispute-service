@@ -1,4 +1,6 @@
--- Demo-only customer logins. Authentication remains external to this service.
+-- Demo fixture initialization only: subject placeholders link existing Auth0 users to seeded customers.
+-- Requests authenticate with validated JWTs and resolve the persisted customer_identities rows.
+-- These placeholders are not a runtime user allowlist; production onboarding provisions the mappings.
 INSERT INTO customers(id,type,display_name,contact_email) SELECT 'f19f1d66-263f-4fd4-a3d5-1638b308e5f3','INDIVIDUAL','Shannon Weir','shannonweir@capitecbank.co.za' WHERE NOT EXISTS (SELECT 1 FROM customers WHERE id='f19f1d66-263f-4fd4-a3d5-1638b308e5f3');
 INSERT INTO customers(id,type,display_name,contact_email) SELECT 'bb7f592a-b8dc-44f4-a176-59b405d3dfb7','INDIVIDUAL','Alex Morgan','alexmorgan@capitecbank.co.za' WHERE NOT EXISTS (SELECT 1 FROM customers WHERE id='bb7f592a-b8dc-44f4-a176-59b405d3dfb7');
 INSERT INTO accounts(id,customer_id,type,display_name,masked_number,currency) SELECT '98ae225d-446d-4b4a-b860-67ea49abafaf','f19f1d66-263f-4fd4-a3d5-1638b308e5f3','CURRENT','Current account','•••• 1234','ZAR' WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE id='98ae225d-446d-4b4a-b860-67ea49abafaf');

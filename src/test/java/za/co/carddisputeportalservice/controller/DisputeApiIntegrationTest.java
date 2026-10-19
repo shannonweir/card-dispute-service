@@ -60,42 +60,90 @@ class DisputeApiIntegrationTest {
     @Test
     @Transactional
     void closedDisputeAllowsANewCaseButNotASecondNonClosedCase() throws Exception {
-        var account = accounts.findAll().stream()
-                .filter(a -> a.getCustomer().getDisplayName().equals("Shannon Weir"))
-                .findFirst().orElseThrow();
-        var transaction = transactions.saveAndFlush(new TransactionRecord(
-                UUID.randomUUID(), account, "Closure test merchant", "C-" + UUID.randomUUID(),
-                "Cape Town", TransactionType.SHOPPING, "Retail", new BigDecimal("99.00"),
-                "ZAR", Instant.now(), "1234", TransactionStatus.POSTED));
-        var old = disputes.saveAndFlush(new za.co.capitecbank.model.Dispute(transaction,
-                za.co.carddisputeportalservice.generated.model.DisputeReason.OTHER,
-                "Original case comments", Instant.now()));
-        old.addEvent(za.co.carddisputeportalservice.generated.model.DisputeStatus.CLOSED,
-                "Closed", "Original case is closed", Instant.now());
+        var account =
+                accounts.findAll().stream()
+                        .filter(a -> a.getCustomer().getDisplayName().equals("Shannon Weir"))
+                        .findFirst()
+                        .orElseThrow();
+        var transaction =
+                transactions.saveAndFlush(
+                        new TransactionRecord(
+                                UUID.randomUUID(),
+                                account,
+                                "Closure test merchant",
+                                "C-" + UUID.randomUUID(),
+                                "Cape Town",
+                                TransactionType.SHOPPING,
+                                "Retail",
+                                new BigDecimal("99.00"),
+                                "ZAR",
+                                Instant.now(),
+                                "1234",
+                                TransactionStatus.POSTED));
+        var old =
+                disputes.saveAndFlush(
+                        new za.co.capitecbank.model.Dispute(
+                                transaction,
+                                za.co.carddisputeportalservice.generated.model.DisputeReason.OTHER,
+                                "Original case comments",
+                                Instant.now()));
+        old.addEvent(
+                za.co.carddisputeportalservice.generated.model.DisputeStatus.CLOSED,
+                "Closed",
+                "Original case is closed",
+                Instant.now());
         disputes.saveAndFlush(old);
-        String body = "{\"transactionId\":\"" + transaction.getId()
-                + "\",\"reason\":\"OTHER\",\"details\":\"New case after closure\"}";
-        mvc.perform(get("/api/v1/transactions/" + transaction.getId()).with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.disputeEligible").value(true))
+        String body =
+                "{\"transactionId\":\""
+                        + transaction.getId()
+                        + "\",\"reason\":\"OTHER\",\"details\":\"New case after closure\"}";
+        mvc.perform(
+                        get("/api/v1/transactions/" + transaction.getId())
+                                .with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disputeEligible").value(true))
                 .andExpect(jsonPath("$.disputeId").doesNotExist());
-        var result = mvc.perform(post("/api/v1/disputes").with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer)))
-                .header("Idempotency-Key", "closure-new-case").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isCreated()).andReturn();
+        var result =
+                mvc.perform(
+                                post("/api/v1/disputes")
+                                        .with(
+                                                jwt().jwt(
+                                                                j ->
+                                                                        j.subject(SHANNON_SUBJECT)
+                                                                                .issuer(issuer)))
+                                        .header("Idempotency-Key", "closure-new-case")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(body))
+                        .andExpect(status().isCreated())
+                        .andReturn();
         String newId = JsonPath.read(result.getResponse().getContentAsString(), "$.id");
         org.assertj.core.api.Assertions.assertThat(newId).isNotEqualTo(old.getId().toString());
         org.assertj.core.api.Assertions.assertThat(disputes.findById(old.getId())).isPresent();
-        mvc.perform(get("/api/v1/transactions").with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer)))
-                .param("search", transaction.getReference()))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].disputeId").value(newId));
-        mvc.perform(get("/api/v1/disputes/" + old.getId()).with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CLOSED"))
+        mvc.perform(
+                        get("/api/v1/transactions")
+                                .with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer)))
+                                .param("search", transaction.getReference()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].disputeId").value(newId));
+        mvc.perform(
+                        get("/api/v1/disputes/" + old.getId())
+                                .with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"))
                 .andExpect(jsonPath("$.details").value("Original case comments"));
 
-        mvc.perform(post("/api/v1/disputes").with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer)))
-                .header("Idempotency-Key", "closure-third-case").contentType(MediaType.APPLICATION_JSON).content(body))
+        mvc.perform(
+                        post("/api/v1/disputes")
+                                .with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer)))
+                                .header("Idempotency-Key", "closure-third-case")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
                 .andExpect(status().isConflict());
-        mvc.perform(get("/api/v1/transactions/" + transaction.getId()).with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.disputeEligible").value(false))
+        mvc.perform(
+                        get("/api/v1/transactions/" + transaction.getId())
+                                .with(jwt().jwt(j -> j.subject(SHANNON_SUBJECT).issuer(issuer))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disputeEligible").value(false))
                 .andExpect(jsonPath("$.disputeId").value(newId));
     }
 
