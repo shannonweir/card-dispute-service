@@ -14,7 +14,7 @@ View transactions. Submit disputes. Track their timeline.
 | Run mode | You need |
 | --- | --- |
 | 🐳 Containers | Docker + Compose, or Podman + Compose provider; engine running |
-| ☕ Local backend / tests | Java 25; Maven Wrapper included |
+| ☕ Local backend / tests | Java 25 + Maven 3.9.x installed |
 | 🟢 Frontend development | Node.js 22, in the separate `card-dispute-portal` checkout |
 
 Internet is required for downloads and Auth0 login. Ports: **8080** backend · **5432** database · **4200** frontend.
@@ -42,7 +42,7 @@ Wait for health **UP**. Podman users substitute `podman compose`; execution was 
 
 ```bash
 # Build, test, package and generate coverage
-./mvnw clean verify
+mvn clean verify
 
 # Build the container image only; also runs backend tests
 docker build -t card-dispute-service .
@@ -54,7 +54,7 @@ docker build -t card-dispute-service .
 | 🧪 Test results | `target/surefire-reports/` |
 | 📊 Coverage | `target/site/jacoco/index.html` |
 
-Regular tests use isolated H2 databases and local test JWTs—no running containers or Auth0 required. Windows: use `mvnw.cmd`.
+Regular tests use isolated H2 databases and local test JWTs—no running containers or Auth0 required.
 
 ## Architecture
 
@@ -106,7 +106,7 @@ Stop the backend container first if it occupies port 8080:
 ```bash
 docker compose stop card-dispute-service
 docker compose up -d database
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 Or run `CardDisputePortalServiceApplication` in your IDE. Use **Java 25**, with **no active profile**.
@@ -119,7 +119,7 @@ Or run `CardDisputePortalServiceApplication` in your IDE. Use **Java 25**, with 
 Six concurrency tests are skipped by default. Provision a **disposable** database on port 55432: database, username and password all `dispute_tests`.
 
 ```bash
-./mvnw clean verify -Dpostgres.tests=true \
+mvn clean verify -Dpostgres.tests=true \
   -Dtest.postgres.url=jdbc:postgresql://localhost:55432/dispute_tests \
   -Dtest.postgres.username=dispute_tests -Dtest.postgres.password=dispute_tests
 ```
@@ -135,7 +135,7 @@ Settings: [application.yml](src/main/resources/application.yml) · [Test overrid
 
 For another Auth0 tenant, update issuer/audience, subject mappings and frontend settings; allow the frontend's callback/logout URLs and web origins in Auth0.
 
-Change the OpenAPI contract first, then run `./mvnw generate-sources`. From the frontend checkout, run `npm run generate:api`. Generated Java code stays under `target/`.
+Change the OpenAPI contract first, then run `mvn generate-sources`. From the frontend checkout, run `npm run generate:api`. Generated Java code stays under `target/`.
 
 </details>
 
