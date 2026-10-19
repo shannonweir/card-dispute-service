@@ -133,9 +133,9 @@ These tests insert data. Use a separate database, not the application database.
 <details>
 <summary>⚙️ Configuration and contract changes</summary>
 
-Deployment settings live in `.env`: database credentials/name, Auth0 issuer/audience, demo seed subjects and CORS origins. Start from [.env.example](.env.example). Keep entries as unquoted `KEY=value` so both Compose and Spring's local properties import can read them. The file is excluded from Git and the image build.
+Deployment settings live in `.env`: database credentials/name, local JDBC URL, Auth0 issuer/audience, demo seed subjects and CORS origins. Start from [.env.example](.env.example), which includes every environment variable referenced by the backend configuration. Keep entries as unquoted `KEY=value` so both Compose and Spring's local properties import can read them. The file is excluded from Git and the image build.
 
-[application.yml](src/main/resources/application.yml) keeps Spring settings and references these values; [test overrides](src/test/resources/application-test.yml) remain isolated. Compose passes the variables into containers and sets the database hostname to `database`. Changing `.env` values takes effect when Compose recreates the affected containers. PostgreSQL credentials are initialized with its data volume; editing `.env` does not change an existing database user's password.
+[application.yml](src/main/resources/application.yml) keeps Spring settings and references these values; [test overrides](src/test/resources/application-test.yml) remain isolated. `DB_URL` connects Maven/IDE runs to `localhost:5432`; Compose overrides it to use the container hostname `database`. Changing `.env` values takes effect when Compose recreates the affected containers. PostgreSQL credentials are initialized with its data volume; editing `.env` does not change an existing database user's password.
 
 For another Auth0 tenant, update the `.env` issuer/audience and demo subject mappings plus frontend settings; allow the frontend's callback/logout URLs and web origins in Auth0.
 
