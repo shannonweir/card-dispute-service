@@ -96,7 +96,7 @@ Open [the portal](http://localhost:4200). Nginx uses the backend's `card-dispute
 
 Auth0 is hosted online. This login resolves to Shannon's seeded accounts. Missing/invalid tokens return **401**; unmapped users receive **403**.
 
-For frontend development instead: `npm ci`, then `npm start`. Test with `npm test`; build with `npm run build`. Only one frontend should use port 4200.
+For frontend development instead: `npm ci`, then `npm start`. Test with `npm test`; build with `npm run build`. Only one frontend should use port 4200. Development API requests use `localhost:4200/api/v1`; Angular proxies them to the backend on port 8080.
 
 </details>
 
