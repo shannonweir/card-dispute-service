@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import za.co.capitecbank.exception.CardDisputeException;
 import za.co.capitecbank.exception.ErrorCode;
-import za.co.capitecbank.mapper.PortalMapper;
+import za.co.capitecbank.mapper.CardDisputeMapper;
 import za.co.capitecbank.model.Dispute;
 import za.co.capitecbank.model.DisputeSubmission;
 import za.co.capitecbank.repository.CustomerRepository;
@@ -44,7 +44,7 @@ public class DisputeService {
     private final TransactionRepository transactionRepository;
     private final DisputeRepository disputeRepository;
     private final Clock clock;
-    private final PortalMapper portalMapper;
+    private final CardDisputeMapper cardDisputeMapper;
     private final CurrentCustomer currentCustomer;
     private final DisputeSubmissionRepository submissions;
     private final CustomerRepository customers;
@@ -54,19 +54,23 @@ public class DisputeService {
     private static final List<DisputeStatus> RESOLVED_STATUSES = List.of(DisputeStatus.RESOLVED, DisputeStatus.CLOSED);
 
     public DisputePage getDisputes(final UUID accountId, final int page, final int size, final DisputeStatus status) {
+
         UUID owner = currentCustomer.id();
         currentCustomer.requireAccount(accountId);
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
-        return portalMapper.disputePage(disputeRepository.findScoped(owner, accountId, status, pageable).map(portalMapper::map));
+        return cardDisputeMapper.disputePage(disputeRepository.findScoped(owner, accountId, status, pageable).map(cardDisputeMapper::map));
     }
 
     @Transactional
     public DisputeResponse createDispute(final CreateDisputeRequest request, final String key) {
+
         UUID owner = currentCustomer.id();
         String details = request.getDetails().strip();
+
         if (details.length() < 10)
             throw new CardDisputeException(ErrorCode.VALIDATION_ERROR, "Provide at least 10 characters of dispute details");
+
         String hash = hash(request.getTransactionId(), request.getReason(), details);
         // A customer owns the key namespace. Always take this lock before the transaction lock.
         // This deliberately serializes that customer's short dispute-creation transactions.
@@ -80,7 +84,7 @@ public class DisputeService {
         if (previous.isPresent()) {
             if (!previous.get().getRequestHash().equals(hash))
                 throw new CardDisputeException(ErrorCode.CONFLICT, "Idempotency-Key was already used for a different request");
-            return portalMapper.map(previous.get().getDispute());
+            return cardDisputeMapper.map(previous.get().getDispute());
         }
 
         if (disputeRepository.existsByTransactionIdAndStatusNot(transaction.getId(), DisputeStatus.CLOSED))
@@ -92,7 +96,7 @@ public class DisputeService {
         var dispute = disputeRepository.save(new Dispute(transaction, request.getReason(), details, clock.instant()));
         submissions.save(new DisputeSubmission(owner, key, hash, dispute));
 
-        return portalMapper.map(dispute);
+        return cardDisputeMapper.map(dispute);
     }
 
     public Dispute getOwnedDispute(final UUID id) {
@@ -109,22 +113,21 @@ public class DisputeService {
     public DisputeResponse getDisputeById(final UUID id) {
         return disputeRepository
                 .findDetailsByIdAndTransactionAccountCustomerId(id, currentCustomer.id())
-                .map(portalMapper::map)
+                .map(cardDisputeMapper::map)
                 .orElseThrow(() -> new CardDisputeException(ErrorCode.NOT_FOUND, "Dispute was not found"));
     }
 
     public List<TimelineEventResponse> getDisputeTimeline(final UUID id) {
         requireOwnedDispute(id);
         return events.findByDisputeIdOrderByOccurredAtAscIdAsc(id).stream()
-                .map(portalMapper::map)
+                .map(cardDisputeMapper::map)
                 .toList();
     }
 
     public DisputeSummary getDisputeSummary(final UUID accountId) {
         UUID owner = currentCustomer.id();
         currentCustomer.requireAccount(accountId);
-        return portalMapper.map(
-                disputeRepository.summarize(owner, accountId, ACTIVE_STATUSES, RESOLVED_STATUSES, DisputeStatus.REJECTED));
+        return cardDisputeMapper.map(disputeRepository.summarize(owner, accountId, ACTIVE_STATUSES, RESOLVED_STATUSES, DisputeStatus.REJECTED));
     }
 
     public List<DisputeReasonOption> getDisputeReasons() {

@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import za.co.capitecbank.exception.CardDisputeException;
 import za.co.capitecbank.exception.ErrorCode;
-import za.co.capitecbank.mapper.PortalMapper;
+import za.co.capitecbank.mapper.CardDisputeMapper;
 import za.co.capitecbank.model.Account;
 import za.co.capitecbank.model.Customer;
 import za.co.capitecbank.model.Dispute;
@@ -59,7 +59,7 @@ class DisputeServiceTest {
                         transactions,
                         disputes,
                         Clock.fixed(NOW, ZoneOffset.UTC),
-                        Mappers.getMapper(PortalMapper.class),
+                        Mappers.getMapper(CardDisputeMapper.class),
                         customer,
                         submissions,
                         customers,

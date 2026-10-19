@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import za.co.capitecbank.exception.CardDisputeException;
 import za.co.capitecbank.exception.ErrorCode;
-import za.co.capitecbank.mapper.PortalMapper;
+import za.co.capitecbank.mapper.CardDisputeMapper;
 import za.co.capitecbank.model.Dispute;
 import za.co.capitecbank.model.TransactionRecord;
 import za.co.capitecbank.repository.DisputeRepository;
@@ -38,13 +38,14 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final DisputeRepository disputeRepository;
-    private final PortalMapper portalMapper;
+    private final CardDisputeMapper cardDisputeMapper;
     private final CurrentCustomer currentCustomer;
 
     public TransactionPage getTransactions(final UUID accountId, final int page, final int size, final LocalDate from,
                                            final LocalDate to, final String search, final TransactionType type) {
         UUID owner = currentCustomer.id();
         currentCustomer.requireAccount(accountId);
+
         if (from != null && to != null && from.isAfter(to))
             throw new CardDisputeException(ErrorCode.VALIDATION_ERROR, "from must not be after to");
 
@@ -59,7 +60,7 @@ public class TransactionService {
                                 .filter(d -> d.getStatus() != DisputeStatus.CLOSED)
                                 .collect(Collectors.toMap(d -> d.getTransaction().getId(), Dispute::getId));
 
-        return portalMapper.transactionPage(results.map(t -> response(t, existing.get(t.getId()))));
+        return cardDisputeMapper.transactionPage(results.map(t -> response(t, existing.get(t.getId()))));
     }
 
     public TransactionResponse getTransactionById(final UUID id) {
@@ -68,7 +69,9 @@ public class TransactionService {
         var transaction = transactionRepository
                         .findByIdAndAccountCustomerId(id, owner)
                         .orElseThrow(() -> new CardDisputeException(ErrorCode.NOT_FOUND, "Transaction was not found"));
+
         var existing = disputeRepository.findByTransactionAccountCustomerIdAndTransactionIdIn(owner, List.of(id));
+
         return response(transaction, existing.stream()
                 .filter(d -> d.getStatus() != DisputeStatus.CLOSED)
                 .map(Dispute::getId).findFirst().orElse(null));
@@ -123,6 +126,6 @@ public class TransactionService {
                         : transaction.getStatus() != TransactionStatus.POSTED
                                 ? "Only posted transactions can be disputed"
                                 : null;
-        return portalMapper.map(transaction, reason == null, reason, disputeId);
+        return cardDisputeMapper.map(transaction, reason == null, reason, disputeId);
     }
 }

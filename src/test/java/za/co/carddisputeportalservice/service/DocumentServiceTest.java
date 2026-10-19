@@ -15,7 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
 import za.co.capitecbank.exception.CardDisputeException;
-import za.co.capitecbank.mapper.PortalMapper;
+import za.co.capitecbank.mapper.CardDisputeMapper;
 import za.co.capitecbank.model.Dispute;
 import za.co.capitecbank.model.DisputeDocument;
 import za.co.capitecbank.repository.DisputeDocumentRepository;
@@ -177,7 +177,7 @@ class DocumentServiceTest {
         return new DocumentService(
                 disputes,
                 documents,
-                Mappers.getMapper(PortalMapper.class),
+                Mappers.getMapper(CardDisputeMapper.class),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 }

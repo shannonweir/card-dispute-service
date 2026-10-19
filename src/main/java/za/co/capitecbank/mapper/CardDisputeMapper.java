@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
-public interface PortalMapper {
+public interface CardDisputeMapper {
 
     @Mapping(target = "accounts", source = "accounts")
     CustomerProfile map(final Customer customer, final List<Account> accounts);

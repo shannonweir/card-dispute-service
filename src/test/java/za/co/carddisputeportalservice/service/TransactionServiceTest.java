@@ -21,7 +21,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import za.co.capitecbank.exception.CardDisputeException;
 import za.co.capitecbank.exception.ErrorCode;
-import za.co.capitecbank.mapper.PortalMapper;
+import za.co.capitecbank.mapper.CardDisputeMapper;
 import za.co.capitecbank.model.Account;
 import za.co.capitecbank.model.Customer;
 import za.co.capitecbank.model.Dispute;
@@ -55,7 +55,7 @@ class TransactionServiceTest {
         when(current.id()).thenReturn(owner.getId());
         service =
                 new TransactionService(
-                        transactions, disputes, Mappers.getMapper(PortalMapper.class), current);
+                        transactions, disputes, Mappers.getMapper(CardDisputeMapper.class), current);
     }
 
     @Test

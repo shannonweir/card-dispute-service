@@ -12,7 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import za.co.capitecbank.service.CustomerService;
 import za.co.carddisputeportalservice.generated.model.AccountType;
 import za.co.carddisputeportalservice.generated.model.CustomerType;
-import za.co.capitecbank.mapper.PortalMapper;
+import za.co.capitecbank.mapper.CardDisputeMapper;
 import za.co.capitecbank.model.Account;
 import za.co.capitecbank.model.Customer;
 import za.co.capitecbank.repository.AccountRepository;
@@ -69,6 +69,6 @@ class CustomerServiceTest {
     }
 
     private CustomerService service() {
-        return new CustomerService(current, accounts, Mappers.getMapper(PortalMapper.class));
+        return new CustomerService(current, accounts, Mappers.getMapper(CardDisputeMapper.class));
     }
 }

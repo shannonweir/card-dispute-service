@@ -32,6 +32,7 @@ public class CurrentCustomer {
 
         var issuer = token.getToken().getIssuer();
         var subject = token.getToken().getSubject();
+
         if (issuer == null || subject == null || subject.isBlank())
             throw new AuthenticationCredentialsNotFoundException("Customer identity missing");
 

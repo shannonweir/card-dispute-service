@@ -55,23 +55,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return null; // The response may already have been committed.
 
         var problem = response.getBody() instanceof ProblemDetail existing ? existing
-                : ProblemDetail.forStatusAndDetail(
-                                status, "The request could not be processed");
-        String code =
-                switch (status.value()) {
-                    case 400 ->
-                            exception instanceof MethodArgumentNotValidException
-                                            || exception instanceof HandlerMethodValidationException
-                                    ? "VALIDATION_ERROR"
-                                    : "INVALID_REQUEST";
-                    case 413 -> "PAYLOAD_TOO_LARGE";
-                    default ->
-                            status.is5xxServerError()
-                                    ? "INTERNAL_ERROR"
-                                    : HttpStatus.valueOf(status.value()).name();
-                };
+                : ProblemDetail.forStatusAndDetail(status, "The request could not be processed");
+
+        String code = switch (status.value()) {
+            case 400 -> exception instanceof MethodArgumentNotValidException
+                    || exception instanceof HandlerMethodValidationException
+                    ? "VALIDATION_ERROR"
+                    : "INVALID_REQUEST";
+            case 413 -> "PAYLOAD_TOO_LARGE";
+            default -> status.is5xxServerError()
+                    ? "INTERNAL_ERROR"
+                    : HttpStatus.valueOf(status.value()).name();
+        };
         CardDisputeProblem.prepare(problem, code, ((ServletWebRequest) request).getRequest());
-        if (status.is5xxServerError()) logFailure(exception, problem);
+
+        if (status.is5xxServerError())
+            logFailure(exception, problem);
+
         return ResponseEntity.status(status)
                 .headers(response.getHeaders())
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
